@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS CloudFront Setup Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .data-flow-svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .flow-arrow {
+            stroke: #4b5563;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-10 border border-gray-200">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">AWS CloudFront Setup Guide</h1>
+            <p class="text-gray-500">Securely serve static content from a private S3 bucket.</p>
+        </header>
+        
+        <div id="steps-container" class="space-y-8">
+            <!-- Steps will be rendered here by JS -->
+        </div>
+
+        <!-- New section for the data flow diagram -->
+        <div class="mt-12">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">CloudFront Data Flow</h2>
+            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <p class="text-gray-600 mb-6 text-sm">
+                    This diagram illustrates the secure flow of data when a user requests content. The request goes to CloudFront, which then securely fetches the content from the private S3 bucket using the OAC. The S3 bucket is never directly exposed to the public internet.
+                </p>
+                <div class="flex justify-center">
+                    <svg class="data-flow-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#4b5563" />
+                            </marker>
+                        </defs>
+                        
+                        <!-- User Icon -->
+                        <g transform="translate(50, 100)">
+                            <circle cx="0" cy="0" r="40" fill="#60a5fa" />
+                            <text x="0" y="5" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold">User</text>
+                        </g>
+
+                        <!-- CloudFront Distribution Box -->
+                        <rect x="250" y="50" width="300" height="100" rx="10" ry="10" fill="#3b82f6" opacity="0.8" />
+                        <text x="400" y="105" font-size="20" text-anchor="middle" fill="#fff" font-weight="bold">CloudFront Distribution</text>
+                        <text x="400" y="125" font-size="12" text-anchor="middle" fill="#fff">(Cache Layer)</text>
+
+                        <!-- S3 Bucket Icon -->
+                        <g transform="translate(670, 100)">
+                            <rect x="-40" y="-40" width="80" height="80" rx="10" ry="10" fill="#f59e0b" />
+                            <text x="0" y="5" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold">Private S3</text>
+                            <text x="0" y="25" font-size="12" text-anchor="middle" fill="#fff">Bucket</text>
+                        </g>
+
+                        <!-- Arrows and Text -->
+                        <!-- User to CloudFront (Request) -->
+                        <path d="M 100 100 L 250 100" class="flow-arrow" />
+                        <text x="175" y="85" font-size="12" text-anchor="middle" fill="#4b5563">HTTPS Request</text>
+
+                        <!-- CloudFront to S3 (Secure Fetch) -->
+                        <path d="M 550 100 L 630 100" class="flow-arrow" />
+                        <text x="590" y="85" font-size="12" text-anchor="middle" fill="#4b5563">Secure Fetch (OAC)</text>
+
+                        <!-- S3 to CloudFront (Content) -->
+                        <path d="M 630 140 L 550 140" class="flow-arrow" />
+                        <text x="590" y="155" font-size="12" text-anchor="middle" fill="#4b5563">Content</text>
+
+                        <!-- CloudFront to User (Content) -->
+                        <path d="M 250 140 L 100 140" class="flow-arrow" />
+                        <text x="175" y="155" font-size="12" text-anchor="middle" fill="#4b5563">Cached Content</text>
+                        
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            <p>&copy; 2025 CloudFront Guide. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Array of steps with detailed content
+        const steps = [
+            {
+                step: 1,
+                title: 'Prepare Your S3 Bucket',
+                content: `
+                    <p class="mb-4">The first step is to have an S3 bucket with the content you want to distribute.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600">
+                        <li><strong>Create an S3 Bucket:</strong> Go to the AWS Management Console, navigate to the S3 service, and create a new bucket. Choose a globally unique name for your bucket.</li>
+                        <li><strong>Upload Content:</strong> Upload all the static content (HTML, CSS, JavaScript files, images, etc.) that you want to serve through CloudFront.</li>
+                        <li><strong>Configure Access:</strong> Ensure that "Block all public access" is enabled for the bucket. This is a critical security measure. CloudFront will be granted access to this bucket later, but the bucket itself will remain private and inaccessible directly from the public internet.</li>
+                    </ul>
+                `
+            },
+            {
+                step: 2,
+                title: 'Create an Origin Access Control (OAC)',
+                content: `
+                    <p class="mb-4">An OAC is a recommended feature that securely connects your CloudFront distribution to your S3 bucket.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600">
+                        <li><strong>Navigate to CloudFront:</strong> In the AWS Management Console, go to the CloudFront service.</li>
+                        <li><strong>Create an OAC:</strong> In the left-hand navigation pane, under <strong>Security</strong>, select <strong>Origin access</strong>. Click <strong>Create control setting</strong>.</li>
+                        <li><strong>Configure OAC:</strong> Provide a descriptive name for your OAC (e.g., <code>my-s3-bucket-oac</code>), select <strong>S3</strong> for Origin type, and click <strong>Create</strong>.</li>
+                        <li><strong>Copy the Policy:</strong> After the OAC is created, CloudFront will display a bucket policy. Copy this policy to your clipboard. This policy is what grants CloudFront permission to read files from your private S3 bucket.</li>
+                    </ul>
+                `
+            },
+            {
+                step: 3,
+                title: 'Create the CloudFront Distribution',
+                content: `
+                    <p class="mb-4">This is where you define how CloudFront will serve your content.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600">
+                        <li><strong>Start a New Distribution:</strong> In the CloudFront console, select <strong>Distributions</strong>, then click <strong>Create distribution</strong>.</li>
+                        <li><strong>Configure Origin:</strong> Click in the <strong>Origin domain</strong> field and select your S3 bucket. For <strong>Origin access</strong>, choose <strong>Origin access control settings</strong> and select your OAC. Click the prompt to update the S3 bucket policy and paste the copied policy into the Bucket policy editor in your S3 bucket's permissions section.</li>
+                        <li><strong>Configure Cache Behavior:</strong> Select <strong>Redirect HTTP to HTTPS</strong> for <strong>Viewer protocol policy</strong>, <strong>GET, HEAD</strong> for <strong>Allowed HTTP methods</strong>, and <strong>CachingOptimized</strong> for <strong>Cache policy</strong>.</li>
+                        <li><strong>Other Settings:</strong> You can add a <strong>Default root object</strong> (e.g., <code>index.html</code>) and choose a <strong>Price class</strong>.</li>
+                        <li><strong>Create Distribution:</strong> Click <strong>Create distribution</strong>.</li>
+                    </ul>
+                `
+            },
+            {
+                step: 4,
+                title: 'Test Your CloudFront Distribution',
+                content: `
+                    <p class="mb-4">It's time to test if your setup works as expected.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600">
+                        <li><strong>Wait for Deployment:</strong> CloudFront distributions take some time to deploy. The status will show as <strong>Deploying</strong>.</li>
+                        <li><strong>Get the Domain Name:</strong> Once the status changes to <strong>Deployed</strong>, copy the Distribution domain name. It will look like <code>d1234abcd.cloudfront.net</code>.</li>
+                        <li><strong>Access Your Content:</strong> Paste this domain name into your browser's address bar. You should see your website or a specific file you uploaded.</li>
+                    </ul>
+                `
+            }
+        ];
+
+        // Function to render steps
+        function renderSteps() {
+            const container = document.getElementById('steps-container');
+            container.innerHTML = steps.map(step => `
+                <div class="step-card bg-gray-50 p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-300 ease-in-out">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full font-bold text-xl mr-4">
+                            ${step.step}
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-800 mb-2">${step.title}</h2>
+                            <div class="text-sm text-gray-600">
+                                ${step.content}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Call the render function on page load
+        document.addEventListener('DOMContentLoaded', renderSteps);
+    </script>
+</body>
+</html>
